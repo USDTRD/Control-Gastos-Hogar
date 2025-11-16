@@ -1,181 +1,186 @@
 // Variables globales
 let gastos = JSON.parse(localStorage.getItem('gastosHogar') || '[]');
-let gastosFiltrados = [...gastos];
 let mesResumen = new Date();
+let categoriaSeleccionada = '';
+let monedaSeleccionada = 'USD';
 
-// Colores profesionales por categoría
-const coloresCategorias = {
-    'Alquiler': { bg: '#fbbf24', text: '#78350f' },
-    'Servicios Públicos': { bg: '#60a5fa', text: '#1e3a8a' },
-    'Préstamos': { bg: '#f87171', text: '#991b1b' },
-    'Restaurantes': { bg: '#fb923c', text: '#9a3412' },
-    'Viajes': { bg: '#a78bfa', text: '#5b21b6' },
-    'Gasolina': { bg: '#34d399', text: '#065f46' },
-    'Personal/Chofer': { bg: '#38bdf8', text: '#075985' },
-    'Compras Internet': { bg: '#c084fc', text: '#6b21a8' },
-    'Supermercado': { bg: '#4ade80', text: '#166534' },
-    'Farmacia': { bg: '#f472b6', text: '#9f1239' },
-    'Ropa': { bg: '#818cf8', text: '#3730a3' },
-    'Adicionales': { bg: '#fcd34d', text: '#78350f' },
-    'Otros': { bg: '#94a3b8', text: '#334155' }
+// Categorías con iconos y colores
+const categorias = {
+    'Alquiler': { icon: '🏠', color: '#FF6B6B' },
+    'Servicios': { icon: '⚡', color: '#4ECDC4' },
+    'Préstamos': { icon: '💳', color: '#F39C12' },
+    'Restaurantes': { icon: '🍽️', color: '#FF8B94' },
+    'Viajes': { icon: '✈️', color: '#9B59B6' },
+    'Gasolina': { icon: '⛽', color: '#3498DB' },
+    'Personal': { icon: '👔', color: '#1CC29F' },
+    'Internet': { icon: '🛒', color: '#E74C3C' },
+    'Supermercado': { icon: '🛍️', color: '#27AE60' },
+    'Farmacia': { icon: '💊', color: '#E91E63' },
+    'Ropa': { icon: '👕', color: '#9C27B0' },
+    'Adicionales': { icon: '➕', color: '#FF9800' },
+    'Otros': { icon: '📦', color: '#607D8B' }
 };
 
 window.onload = function() {
-    const hoy = new Date().toISOString().split('T')[0];
-    document.getElementById('fecha').value = hoy;
-    document.getElementById('ultimaActualizacion').textContent = new Date().toLocaleString('es-DO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    document.getElementById('fechaInput').value = new Date().toISOString().split('T')[0];
+    cargarCategorias();
     actualizar();
 };
 
-function cambiarTab(tab) {
-    ['tabGastos', 'tabResumen', 'tabGraficas'].forEach(id => {
-        document.getElementById(id).className = 'tab-inactive px-6 py-3 rounded-xl font-bold transition-all cursor-pointer';
+function cargarCategorias() {
+    const grid = document.getElementById('categoriaGrid');
+    grid.innerHTML = '';
+    
+    Object.entries(categorias).forEach(([nombre, datos]) => {
+        const div = document.createElement('div');
+        div.className = 'category-option';
+        div.onclick = () => seleccionarCategoria(nombre);
+        div.id = 'cat-' + nombre;
+        div.innerHTML = `
+            <div style="font-size: 24px;">${datos.icon}</div>
+            <div style="font-size: 10px; font-weight: 600; color: #8F9BB3; text-align: center;">${nombre}</div>
+        `;
+        grid.appendChild(div);
     });
-    
-    ['seccionGastos', 'seccionResumen', 'seccionGraficas'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-    });
-    
-    const tabId = 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1);
-    const seccionId = 'seccion' + tab.charAt(0).toUpperCase() + tab.slice(1);
-    
-    document.getElementById(tabId).className = 'tab-active px-6 py-3 rounded-xl font-bold transition-all cursor-pointer';
-    document.getElementById(seccionId).classList.remove('hidden');
-    
-    if (tab === 'resumen') actualizarResumen();
-    if (tab === 'graficas') actualizarGraficas();
 }
 
-function agregarGasto() {
-    const fecha = document.getElementById('fecha').value;
-    const categoria = document.getElementById('categoria').value;
-    const monto = parseFloat(document.getElementById('monto').value);
-    const moneda = document.getElementById('moneda').value;
-    const descripcion = document.getElementById('descripcion').value.trim();
+function seleccionarCategoria(nombre) {
+    categoriaSeleccionada = nombre;
+    document.querySelectorAll('.category-option').forEach(el => {
+        if (el.id && el.id.startsWith('cat-')) {
+            el.classList.remove('selected');
+        }
+    });
+    document.getElementById('cat-' + nombre).classList.add('selected');
+}
 
-    if (!fecha || !categoria || !monto || monto <= 0) {
-        alert('Por favor completa fecha, categoría y un monto válido');
+function seleccionarMoneda(moneda) {
+    monedaSeleccionada = moneda;
+    document.getElementById('btnUSD').classList.remove('selected');
+    document.getElementById('btnDOP').classList.remove('selected');
+    document.getElementById('btn' + moneda).classList.add('selected');
+}
+
+function abrirModal() {
+    document.getElementById('modalAgregar').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModal() {
+    document.getElementById('modalAgregar').classList.remove('active');
+    document.body.style.overflow = '';
+    limpiarFormulario();
+}
+
+function limpiarFormulario() {
+    categoriaSeleccionada = '';
+    document.querySelectorAll('.category-option').forEach(el => {
+        if (el.id && el.id.startsWith('cat-')) {
+            el.classList.remove('selected');
+        }
+    });
+    document.getElementById('montoInput').value = '';
+    document.getElementById('descripcionInput').value = '';
+}
+
+function guardarGasto() {
+    const monto = parseFloat(document.getElementById('montoInput').value);
+    const descripcion = document.getElementById('descripcionInput').value.trim();
+    const fecha = document.getElementById('fechaInput').value;
+
+    if (!categoriaSeleccionada) {
+        alert('Selecciona una categoría');
+        return;
+    }
+
+    if (!monto || monto <= 0) {
+        alert('Ingresa un monto válido');
         return;
     }
 
     gastos.push({
         id: Date.now(),
-        fecha: fecha,
-        categoria: categoria,
+        categoria: categoriaSeleccionada,
         monto: monto,
-        moneda: moneda,
-        descripcion: descripcion
+        moneda: monedaSeleccionada,
+        descripcion: descripcion,
+        fecha: fecha
     });
 
     localStorage.setItem('gastosHogar', JSON.stringify(gastos));
-    
-    // Limpiar formulario
-    document.getElementById('monto').value = '';
-    document.getElementById('descripcion').value = '';
-    document.getElementById('categoria').value = '';
-
-    gastosFiltrados = [...gastos];
+    cerrarModal();
     actualizar();
     
-    // Mostrar feedback
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '✓ ¡Agregado!';
-    btn.style.background = '#10b981';
-    setTimeout(() => {
-        btn.textContent = originalText;
-        btn.style.background = '';
-    }, 1500);
+    // Cambiar a sección gastos
+    cambiarSeccion('gastos');
 }
 
 function eliminarGasto(id) {
-    if (!confirm('¿Eliminar este gasto?')) return;
-    gastos = gastos.filter(g => g.id !== id);
-    localStorage.setItem('gastosHogar', JSON.stringify(gastos));
-    gastosFiltrados = [...gastos];
-    actualizar();
+    if (confirm('¿Eliminar este gasto?')) {
+        gastos = gastos.filter(g => g.id !== id);
+        localStorage.setItem('gastosHogar', JSON.stringify(gastos));
+        actualizar();
+    }
 }
 
-function filtrarGastos() {
-    const categoria = document.getElementById('filtroCategoria').value;
-    const desde = document.getElementById('filtroDesde').value;
-    const hasta = document.getElementById('filtroHasta').value;
-    const moneda = document.getElementById('filtroMoneda').value;
-
-    gastosFiltrados = gastos.filter(g => {
-        const matchCategoria = !categoria || g.categoria === categoria;
-        const matchFecha = (!desde || g.fecha >= desde) && (!hasta || g.fecha <= hasta);
-        const matchMoneda = !moneda || g.moneda === moneda;
-        return matchCategoria && matchFecha && matchMoneda;
-    });
-
-    actualizarTablaGastos();
+function cambiarSeccion(seccion) {
+    document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById('seccion' + seccion.charAt(0).toUpperCase() + seccion.slice(1)).classList.add('active');
+    event.target.closest('.nav-item').classList.add('active');
+    
+    if (seccion === 'resumen') actualizarResumen();
+    if (seccion === 'analisis') actualizarGraficas();
 }
 
 function actualizar() {
-    actualizarTotales();
-    actualizarTablaGastos();
-    document.getElementById('ultimaActualizacion').textContent = new Date().toLocaleString('es-DO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function actualizarTotales() {
     const mesActual = new Date().toISOString().substring(0, 7);
     const gastosDelMes = gastos.filter(g => g.fecha.startsWith(mesActual));
 
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
+    const totalMes = totalUSD + (totalDOP / 60); // Aproximado en USD
 
-    document.getElementById('totalUSD').textContent = '$' + totalUSD.toLocaleString('es-DO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('totalDOP').textContent = 'RD$' + totalDOP.toLocaleString('es-DO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('totalGastos').textContent = gastosDelMes.length.toLocaleString('es-DO');
-}
+    document.getElementById('totalMesDisplay').textContent = '$' + totalMes.toFixed(2);
+    document.getElementById('totalUSDDisplay').textContent = '$' + totalUSD.toFixed(2);
+    document.getElementById('totalDOPDisplay').textContent = 'RD$' + totalDOP.toFixed(2);
+    document.getElementById('totalGastosDisplay').textContent = gastosDelMes.length;
 
-function actualizarTablaGastos() {
-    const tbody = document.getElementById('tablaGastos');
-    tbody.innerHTML = '';
-
-    if (gastosFiltrados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-gray-400 text-lg font-medium">No hay gastos registrados</td></tr>';
+    // Gastos recientes
+    const listaDiv = document.getElementById('listaGastosRecientes');
+    
+    if (gastosDelMes.length === 0) {
+        listaDiv.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #8F9BB3;">No hay gastos este mes</div>';
         return;
     }
 
-    gastosFiltrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(g => {
-        const colores = coloresCategorias[g.categoria] || { bg: '#94a3b8', text: '#334155' };
-        const simboloMoneda = g.moneda === 'USD' ? '$' : 'RD$';
-        
-        const tr = document.createElement('tr');
-        tr.className = 'table-row border-b border-gray-100';
-        tr.innerHTML = `
-            <td class="py-4 px-4 font-semibold text-gray-700">${formatearFecha(g.fecha)}</td>
-            <td class="py-4 px-4">
-                <span class="category-badge" style="background-color: ${colores.bg}; color: ${colores.text};">
-                    ${g.categoria}
-                </span>
-            </td>
-            <td class="text-right py-4 px-4 font-mono font-bold text-lg" style="color: ${colores.text};">
-                ${simboloMoneda}${g.monto.toLocaleString('es-DO', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </td>
-            <td class="py-4 px-4 text-gray-600">${g.descripcion || '—'}</td>
-            <td class="text-center py-4 px-4">
-                <button onclick="eliminarGasto(${g.id})" class="text-red-500 hover:text-red-700 hover:scale-110 transition-all text-xl">
-                    🗑️
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+    listaDiv.innerHTML = gastosDelMes
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+        .slice(0, 10)
+        .map(g => {
+            const cat = categorias[g.categoria];
+            return `
+                <div class="category-item" onclick="eliminarGasto(${g.id})">
+                    <div class="category-icon" style="background: ${cat.color}20; color: ${cat.color};">
+                        ${cat.icon}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: #1A1A1A; font-size: 15px; margin-bottom: 4px;">
+                            ${g.categoria}
+                        </div>
+                        <div style="color: #8F9BB3; font-size: 13px;">
+                            ${g.descripcion || formatearFecha(g.fecha)}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: #1A1A1A; font-size: 16px;">
+                            ${g.moneda === 'USD' ? '$' : 'RD$'}${g.monto.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
 }
 
 function formatearFecha(fecha) {
@@ -192,58 +197,61 @@ function cambiarMes(dir) {
 function actualizarResumen() {
     const mesStr = mesResumen.toISOString().substring(0, 7);
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    document.getElementById('mesActual').textContent = meses[mesResumen.getMonth()] + ' ' + mesResumen.getFullYear();
+    document.getElementById('mesActualText').textContent = meses[mesResumen.getMonth()] + ' ' + mesResumen.getFullYear();
 
     const gastosDelMes = gastos.filter(g => g.fecha.startsWith(mesStr));
     
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
 
-    document.getElementById('resumenUSD').textContent = '$' + totalUSD.toLocaleString('es-DO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('resumenDOP').textContent = 'RD$' + totalDOP.toLocaleString('es-DO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('resumenUSD').textContent = '$' + totalUSD.toFixed(2);
+    document.getElementById('resumenDOP').textContent = 'RD$' + totalDOP.toFixed(2);
 
-    // Resumen por categoría
-    const categorias = {};
+    // Por categoría
+    const porCategoria = {};
     gastosDelMes.forEach(g => {
-        if (!categorias[g.categoria]) {
-            categorias[g.categoria] = { USD: 0, DOP: 0, cantidad: 0 };
+        if (!porCategoria[g.categoria]) {
+            porCategoria[g.categoria] = { USD: 0, DOP: 0, cantidad: 0 };
         }
-        categorias[g.categoria][g.moneda] += g.monto;
-        categorias[g.categoria].cantidad++;
+        porCategoria[g.categoria][g.moneda] += g.monto;
+        porCategoria[g.categoria].cantidad++;
     });
 
     const resumenDiv = document.getElementById('resumenCategorias');
     
-    if (Object.keys(categorias).length === 0) {
-        resumenDiv.innerHTML = '<p class="text-gray-400 text-center py-12 text-lg font-medium">No hay gastos este mes</p>';
+    if (Object.keys(porCategoria).length === 0) {
+        resumenDiv.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #8F9BB3;">No hay gastos este mes</div>';
         return;
     }
 
-    let html = '';
-    Object.entries(categorias).sort((a, b) => {
-        const totalA = a[1].USD + (a[1].DOP / 60);
-        const totalB = b[1].USD + (b[1].DOP / 60);
-        return totalB - totalA;
-    }).forEach(([cat, datos]) => {
-        const colores = coloresCategorias[cat] || { bg: '#94a3b8', text: '#334155' };
-        html += `
-            <div class="category-summary" style="border-color: ${colores.bg};">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <span class="category-badge" style="background-color: ${colores.bg}; color: ${colores.text};">
-                            ${cat}
-                        </span>
-                        <span class="text-gray-500 text-sm font-medium">${datos.cantidad} transacción${datos.cantidad > 1 ? 'es' : ''}</span>
+    resumenDiv.innerHTML = Object.entries(porCategoria)
+        .sort((a, b) => {
+            const totalA = a[1].USD + (a[1].DOP / 60);
+            const totalB = b[1].USD + (b[1].DOP / 60);
+            return totalB - totalA;
+        })
+        .map(([cat, datos]) => {
+            const catInfo = categorias[cat];
+            return `
+                <div class="category-item">
+                    <div class="category-icon" style="background: ${catInfo.color}20; color: ${catInfo.color};">
+                        ${catInfo.icon}
                     </div>
-                    <div class="text-right">
-                        ${datos.USD > 0 ? `<div class="font-bold text-lg text-gray-800">$${datos.USD.toLocaleString('es-DO', {minimumFractionDigits: 2})}</div>` : ''}
-                        ${datos.DOP > 0 ? `<div class="font-bold text-lg text-gray-700">RD$${datos.DOP.toLocaleString('es-DO', {minimumFractionDigits: 2})}</div>` : ''}
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #1A1A1A; font-size: 15px; margin-bottom: 4px;">
+                            ${cat}
+                        </div>
+                        <div style="color: #8F9BB3; font-size: 13px;">
+                            ${datos.cantidad} transacción${datos.cantidad > 1 ? 'es' : ''}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        ${datos.USD > 0 ? `<div style="font-weight: 700; font-size: 16px;">$${datos.USD.toFixed(2)}</div>` : ''}
+                        ${datos.DOP > 0 ? `<div style="font-weight: 700; font-size: 16px;">RD$${datos.DOP.toFixed(2)}</div>` : ''}
                     </div>
                 </div>
-            </div>
-        `;
-    });
-    resumenDiv.innerHTML = html;
+            `;
+        }).join('');
 }
 
 // GRÁFICAS
@@ -251,108 +259,57 @@ function actualizarGraficas() {
     const mesActual = new Date().toISOString().substring(0, 7);
     const gastosDelMes = gastos.filter(g => g.fecha.startsWith(mesActual));
 
-    // Gráfica por categorías
-    const categorias = {};
+    // Por categoría
+    const porCategoria = {};
     gastosDelMes.forEach(g => {
-        if (!categorias[g.categoria]) categorias[g.categoria] = 0;
-        const montoUSD = g.moneda === 'USD' ? g.monto : g.monto / 60;
-        categorias[g.categoria] += montoUSD;
+        if (!porCategoria[g.categoria]) porCategoria[g.categoria] = 0;
+        porCategoria[g.categoria] += g.moneda === 'USD' ? g.monto : g.monto / 60;
     });
 
     const ctxCat = document.getElementById('graficoCategorias');
-    if (window.chartCategorias) window.chartCategorias.destroy();
-    window.chartCategorias = new Chart(ctxCat, {
+    if (window.chartCat) window.chartCat.destroy();
+    window.chartCat = new Chart(ctxCat, {
         type: 'doughnut',
         data: {
-            labels: Object.keys(categorias),
+            labels: Object.keys(porCategoria),
             datasets: [{
-                data: Object.values(categorias),
-                backgroundColor: Object.keys(categorias).map(cat => coloresCategorias[cat]?.bg || '#94a3b8'),
-                borderWidth: 3,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { 
-                    position: 'bottom',
-                    labels: { 
-                        color: '#374151', 
-                        font: { weight: '600', size: 12, family: 'Inter' },
-                        padding: 15,
-                        usePointStyle: true
-                    } 
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.parsed / total) * 100).toFixed(1);
-                            return ` $${context.parsed.toFixed(2)} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Gráfica USD vs DOP
-    const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
-    const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
-
-    const ctxMonedas = document.getElementById('graficoMonedas');
-    if (window.chartMonedas) window.chartMonedas.destroy();
-    window.chartMonedas = new Chart(ctxMonedas, {
-        type: 'bar',
-        data: {
-            labels: ['USD', 'DOP'],
-            datasets: [{
-                label: 'Total gastado',
-                data: [totalUSD, totalDOP],
-                backgroundColor: ['#059669', '#10b981'],
-                borderRadius: 8,
+                data: Object.values(porCategoria),
+                backgroundColor: Object.keys(porCategoria).map(cat => categorias[cat].color),
                 borderWidth: 0
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { 
-                        color: '#374151',
-                        font: { weight: '600', size: 12 }
-                    },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                },
-                x: {
-                    ticks: { 
-                        color: '#374151', 
-                        font: { weight: '700', size: 14 }
-                    },
-                    grid: { display: false }
-                }
+                legend: { position: 'bottom', labels: { font: { size: 11 } } }
             }
         }
     });
 
-    // Evolución mensual
+    // USD vs DOP
+    const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
+    const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
+
+    const ctxMon = document.getElementById('graficoMonedas');
+    if (window.chartMon) window.chartMon.destroy();
+    window.chartMon = new Chart(ctxMon, {
+        type: 'bar',
+        data: {
+            labels: ['USD', 'DOP'],
+            datasets: [{
+                data: [totalUSD, totalDOP],
+                backgroundColor: ['#1CC29F', '#05BE9E'],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // Evolución
     const meses = {};
     gastos.forEach(g => {
         const mes = g.fecha.substring(0, 7);
@@ -360,74 +317,27 @@ function actualizarGraficas() {
         meses[mes] += g.moneda === 'USD' ? g.monto : g.monto / 60;
     });
 
-    const mesesOrdenados = Object.keys(meses).sort().slice(-6); // Últimos 6 meses
-    const totalesPorMes = mesesOrdenados.map(m => meses[m]);
+    const mesesOrdenados = Object.keys(meses).sort().slice(-6);
 
     const ctxEvol = document.getElementById('graficoEvolucion');
-    if (window.chartEvolucion) window.chartEvolucion.destroy();
-    window.chartEvolucion = new Chart(ctxEvol, {
+    if (window.chartEvol) window.chartEvol.destroy();
+    window.chartEvol = new Chart(ctxEvol, {
         type: 'line',
         data: {
-            labels: mesesOrdenados.map(m => {
-                const [year, month] = m.split('-');
-                const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                return nombresMeses[parseInt(month) - 1] + ' ' + year.slice(2);
-            }),
+            labels: mesesOrdenados,
             datasets: [{
-                label: 'Total (USD aprox.)',
-                data: totalesPorMes,
-                borderColor: '#059669',
-                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                label: 'Total (USD)',
+                data: mesesOrdenados.map(m => meses[m]),
+                borderColor: '#1CC29F',
+                backgroundColor: 'rgba(28, 194, 159, 0.1)',
                 tension: 0.4,
-                fill: true,
-                borderWidth: 3,
-                pointRadius: 6,
-                pointBackgroundColor: '#059669',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointHoverRadius: 8
+                fill: true
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { 
-                    labels: { 
-                        color: '#374151', 
-                        font: { weight: '600', size: 13, family: 'Inter' },
-                        padding: 15
-                    } 
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    callbacks: {
-                        label: function(context) {
-                            return ` $${context.parsed.y.toFixed(2)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { 
-                        color: '#374151',
-                        font: { weight: '600', size: 12 }
-                    },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                },
-                x: {
-                    ticks: { 
-                        color: '#374151',
-                        font: { weight: '600', size: 12 }
-                    },
-                    grid: { color: 'rgba(0, 0, 0, 0.03)' }
-                }
-            }
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
         }
     });
 }
