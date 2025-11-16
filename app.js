@@ -1,8 +1,9 @@
 // Variables globales
-let gastos = JSON.parse(localStorage.getItem('gastosHogar') || '[]');
+let gastos = [];
 let mesResumen = new Date();
 let categoriaSeleccionada = '';
 let monedaSeleccionada = 'USD';
+let unsubscribe = null;
 
 // Categorías con iconos y colores
 const categorias = {
@@ -21,11 +22,68 @@ const categorias = {
     'Otros': { icon: '📦', color: '#607D8B' }
 };
 
-window.onload = function() {
+// Esperar a que Firebase esté listo
+function esperarFirebase() {
+    return new Promise((resolve) => {
+        const checkFirebase = setInterval(() => {
+            if (window.firebaseReady && window.db) {
+                clearInterval(checkFirebase);
+                resolve();
+            }
+        }, 100);
+    });
+}
+
+window.onload = async function() {
     document.getElementById('fechaInput').value = new Date().toISOString().split('T')[0];
     cargarCategorias();
-    actualizar();
+    
+    // Esperar Firebase y luego cargar datos
+    await esperarFirebase();
+    inicializarFirestore();
 };
+
+// Inicializar escucha en tiempo real de Firestore
+function inicializarFirestore() {
+    const q = window.query(window.collection(window.db, 'gastos'), window.orderBy('fecha', 'desc'));
+    
+    unsubscribe = window.onSnapshot(q, (snapshot) => {
+        gastos = [];
+        snapshot.forEach((doc) => {
+            gastos.push({
+                firestoreId: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        actualizar();
+        mostrarSincronizado();
+    }, (error) => {
+        console.error('Error al escuchar cambios:', error);
+        mostrarError();
+    });
+}
+
+function mostrarSincronizado() {
+    const indicator = document.getElementById('syncIndicator');
+    indicator.textContent = '✓ Sincronizado';
+    indicator.style.background = '#E8FAF6';
+    indicator.style.color = '#1CC29F';
+}
+
+function mostrarSincronizando() {
+    const indicator = document.getElementById('syncIndicator');
+    indicator.textContent = '🔄 Guardando...';
+    indicator.style.background = '#FFF3E0';
+    indicator.style.color = '#F57C00';
+}
+
+function mostrarError() {
+    const indicator = document.getElementById('syncIndicator');
+    indicator.textContent = '⚠️ Sin conexión';
+    indicator.style.background = '#FFEBEE';
+    indicator.style.color = '#C62828';
+}
 
 function cargarCategorias() {
     const grid = document.getElementById('categoriaGrid');
@@ -83,7 +141,7 @@ function limpiarFormulario() {
     document.getElementById('descripcionInput').value = '';
 }
 
-function guardarGasto() {
+async function guardarGasto() {
     const monto = parseFloat(document.getElementById('montoInput').value);
     const descripcion = document.getElementById('descripcionInput').value.trim();
     const fecha = document.getElementById('fechaInput').value;
@@ -98,28 +156,37 @@ function guardarGasto() {
         return;
     }
 
-    gastos.push({
-        id: Date.now(),
-        categoria: categoriaSeleccionada,
-        monto: monto,
-        moneda: monedaSeleccionada,
-        descripcion: descripcion,
-        fecha: fecha
-    });
+    mostrarSincronizando();
 
-    localStorage.setItem('gastosHogar', JSON.stringify(gastos));
-    cerrarModal();
-    actualizar();
-    
-    // Cambiar a sección gastos
-    cambiarSeccion('gastos');
+    try {
+        await window.addDoc(window.collection(window.db, 'gastos'), {
+            categoria: categoriaSeleccionada,
+            monto: monto,
+            moneda: monedaSeleccionada,
+            descripcion: descripcion,
+            fecha: fecha,
+            timestamp: new Date().toISOString()
+        });
+        
+        cerrarModal();
+        cambiarSeccion('gastos');
+    } catch (error) {
+        console.error('Error al guardar:', error);
+        alert('Error al guardar. Verifica tu conexión.');
+        mostrarError();
+    }
 }
 
-function eliminarGasto(id) {
+async function eliminarGasto(firestoreId) {
     if (confirm('¿Eliminar este gasto?')) {
-        gastos = gastos.filter(g => g.id !== id);
-        localStorage.setItem('gastosHogar', JSON.stringify(gastos));
-        actualizar();
+        mostrarSincronizando();
+        try {
+            await window.deleteDoc(window.doc(window.db, 'gastos', firestoreId));
+        } catch (error) {
+            console.error('Error al eliminar:', error);
+            alert('Error al eliminar. Verifica tu conexión.');
+            mostrarError();
+        }
     }
 }
 
@@ -140,14 +207,13 @@ function actualizar() {
 
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
-    const totalMes = totalUSD + (totalDOP / 60); // Aproximado en USD
+    const totalMes = totalUSD + (totalDOP / 60);
 
     document.getElementById('totalMesDisplay').textContent = '$' + totalMes.toFixed(2);
     document.getElementById('totalUSDDisplay').textContent = '$' + totalUSD.toFixed(2);
     document.getElementById('totalDOPDisplay').textContent = 'RD$' + totalDOP.toFixed(2);
     document.getElementById('totalGastosDisplay').textContent = gastosDelMes.length;
 
-    // Gastos recientes
     const listaDiv = document.getElementById('listaGastosRecientes');
     
     if (gastosDelMes.length === 0) {
@@ -156,12 +222,11 @@ function actualizar() {
     }
 
     listaDiv.innerHTML = gastosDelMes
-        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
         .slice(0, 10)
         .map(g => {
             const cat = categorias[g.categoria];
             return `
-                <div class="category-item" onclick="eliminarGasto(${g.id})">
+                <div class="category-item" onclick="eliminarGasto('${g.firestoreId}')">
                     <div class="category-icon" style="background: ${cat.color}20; color: ${cat.color};">
                         ${cat.icon}
                     </div>
@@ -207,7 +272,6 @@ function actualizarResumen() {
     document.getElementById('resumenUSD').textContent = '$' + totalUSD.toFixed(2);
     document.getElementById('resumenDOP').textContent = 'RD$' + totalDOP.toFixed(2);
 
-    // Por categoría
     const porCategoria = {};
     gastosDelMes.forEach(g => {
         if (!porCategoria[g.categoria]) {
@@ -259,7 +323,6 @@ function actualizarGraficas() {
     const mesActual = new Date().toISOString().substring(0, 7);
     const gastosDelMes = gastos.filter(g => g.fecha.startsWith(mesActual));
 
-    // Por categoría
     const porCategoria = {};
     gastosDelMes.forEach(g => {
         if (!porCategoria[g.categoria]) porCategoria[g.categoria] = 0;
@@ -286,7 +349,6 @@ function actualizarGraficas() {
         }
     });
 
-    // USD vs DOP
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
 
@@ -309,7 +371,6 @@ function actualizarGraficas() {
         }
     });
 
-    // Evolución
     const meses = {};
     gastos.forEach(g => {
         const mes = g.fecha.substring(0, 7);
