@@ -7,6 +7,7 @@ let unsubscribe = null;
 
 // Categorías con iconos y colores
 const categorias = {
+    'PEDRITO': { icon: '👶', color: '#FF6B9D' },
     'Alquiler': { icon: '🏠', color: '#FF6B6B' },
     'Servicios': { icon: '⚡', color: '#4ECDC4' },
     'Préstamos': { icon: '💳', color: '#F39C12' },
