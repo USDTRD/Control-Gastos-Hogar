@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#047857">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Control Gastos">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <title>Control de Gastos del Hogar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #064e3b 100%);
+            min-height: 100vh;
+        }
+        
+        .tab-active {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .tab-inactive {
+            background: rgba(255,255,255,0.95);
+            color: #047857;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab-inactive:hover {
+            background: rgba(255,255,255,1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .card-professional {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07), 0 10px 15px rgba(0,0,0,0.1);
+        }
+        
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 16px rgba(5, 150, 105, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .input-professional {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .input-professional:focus {
+            outline: none;
+            border-color: #059669;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+        
+        .btn-professional {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            font-weight: 700;
+            padding: 12px 32px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.875rem;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-professional:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+        }
+        
+        .btn-professional:active {
+            transform: translateY(0);
+        }
+        
+        .table-row:hover {
+            background: #f0fdf4;
+            transform: translateX(4px);
+        }
+        
+        .table-row {
+            transition: all 0.2s;
+        }
+        
+        .category-summary {
+            background: #f9fafb;
+            border-left: 4px solid;
+            padding: 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .category-summary:hover {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transform: translateX(4px);
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            padding: 8px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <div class="max-w-[1600px] mx-auto">
+        <div class="card-professional p-6 md:p-8">
+
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="header-gradient p-3">
+                        <span class="text-4xl">💰</span>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Control de Gastos</h1>
+                        <p class="text-gray-600 text-sm font-medium mt-1">Gestión financiera del hogar</p>
+                    </div>
+                </div>
+                <div class="text-center md:text-right bg-gray-50 px-6 py-3 rounded-xl">
+                    <p class="text-gray-500 font-semibold text-xs uppercase tracking-wide">Última actualización</p>
+                    <p class="text-gray-900 font-bold text-sm mt-1" id="ultimaActualizacion">-</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-3 mb-8 flex-wrap">
+                <button onclick="cambiarTab('gastos')" id="tabGastos" class="tab-active px-6 py-3 rounded-xl font-bold transition-all cursor-pointer">
+                    💳 Gastos
+                </button>
+                <button onclick="cambiarTab('resumen')" id="tabResumen" class="tab-inactive px-6 py-3 rounded-xl font-bold transition-all cursor-pointer">
+                    📊 Resumen
+                </button>
+                <button onclick="cambiarTab('graficas')" id="tabGraficas" class="tab-inactive px-6 py-3 rounded-xl font-bold transition-all cursor-pointer">
+                    📈 Análisis
+                </button>
+            </div>
+
+            <!-- GASTOS -->
+            <div id="seccionGastos">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="stat-card">
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-white/90 font-bold text-sm uppercase tracking-wide">Total USD</h3>
+                                <span class="text-3xl">💵</span>
+                            </div>
+                            <p class="text-white text-4xl font-bold" id="totalUSD">$0.00</p>
+                            <p class="text-white/80 text-sm font-medium mt-1">Este mes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-white/90 font-bold text-sm uppercase tracking-wide">Total DOP</h3>
+                                <span class="text-3xl">💵</span>
+                            </div>
+                            <p class="text-white text-4xl font-bold" id="totalDOP">RD$0.00</p>
+                            <p class="text-white/80 text-sm font-medium mt-1">Este mes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-white/90 font-bold text-sm uppercase tracking-wide">Transacciones</h3>
+                                <span class="text-3xl">📝</span>
+                            </div>
+                            <p class="text-white text-4xl font-bold" id="totalGastos">0</p>
+                            <p class="text-white/80 text-sm font-medium mt-1">Registradas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="card-professional p-6 mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <span class="text-2xl">➕</span>
+                        Registrar Nuevo Gasto
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+                        <input type="date" id="fecha" class="input-professional">
+                        
+                        <select id="categoria" class="input-professional">
+                            <option value="">Categoría</option>
+                            <option value="Alquiler">🏠 Alquiler</option>
+                            <option value="Servicios Públicos">⚡ Servicios Públicos</option>
+                            <option value="Préstamos">💳 Préstamos</option>
+                            <option value="Restaurantes">🍽️ Restaurantes</option>
+                            <option value="Viajes">✈️ Viajes</option>
+                            <option value="Gasolina">⛽ Gasolina</option>
+                            <option value="Personal/Chofer">👔 Personal/Chofer</option>
+                            <option value="Compras Internet">🛒 Compras Internet</option>
+                            <option value="Supermercado">🛍️ Supermercado</option>
+                            <option value="Farmacia">💊 Farmacia</option>
+                            <option value="Ropa">👕 Ropa</option>
+                            <option value="Adicionales">➕ Adicionales</option>
+                            <option value="Otros">📦 Otros</option>
+                        </select>
+
+                        <input type="number" id="monto" placeholder="Monto" step="0.01" class="input-professional">
+                        
+                        <select id="moneda" class="input-professional">
+                            <option value="USD">💵 USD</option>
+                            <option value="DOP">💵 DOP</option>
+                        </select>
+
+                        <input type="text" id="descripcion" placeholder="Descripción (opcional)" class="input-professional md:col-span-2">
+                    </div>
+                    <button onclick="agregarGasto()" class="btn-professional">
+                        ✓ Agregar Gasto
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="card-professional p-5 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <select id="filtroCategoria" onchange="filtrarGastos()" class="input-professional">
+                            <option value="">🔍 Todas las categorías</option>
+                            <option value="Alquiler">🏠 Alquiler</option>
+                            <option value="Servicios Públicos">⚡ Servicios Públicos</option>
+                            <option value="Préstamos">💳 Préstamos</option>
+                            <option value="Restaurantes">🍽️ Restaurantes</option>
+                            <option value="Viajes">✈️ Viajes</option>
+                            <option value="Gasolina">⛽ Gasolina</option>
+                            <option value="Personal/Chofer">👔 Personal/Chofer</option>
+                            <option value="Compras Internet">🛒 Compras Internet</option>
+                            <option value="Supermercado">🛍️ Supermercado</option>
+                            <option value="Farmacia">💊 Farmacia</option>
+                            <option value="Ropa">👕 Ropa</option>
+                            <option value="Adicionales">➕ Adicionales</option>
+                            <option value="Otros">📦 Otros</option>
+                        </select>
+                        <input type="date" id="filtroDesde" placeholder="Desde" onchange="filtrarGastos()" class="input-professional">
+                        <input type="date" id="filtroHasta" placeholder="Hasta" onchange="filtrarGastos()" class="input-professional">
+                        <select id="filtroMoneda" onchange="filtrarGastos()" class="input-professional">
+                            <option value="">💰 Todas las monedas</option>
+                            <option value="USD">USD</option>
+                            <option value="DOP">DOP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="card-professional p-5 overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="text-left py-4 px-4 font-bold text-gray-700 text-sm uppercase tracking-wide">Fecha</th>
+                                <th class="text-left py-4 px-4 font-bold text-gray-700 text-sm uppercase tracking-wide">Categoría</th>
+                                <th class="text-right py-4 px-4 font-bold text-gray-700 text-sm uppercase tracking-wide">Monto</th>
+                                <th class="text-left py-4 px-4 font-bold text-gray-700 text-sm uppercase tracking-wide">Descripción</th>
+                                <th class="text-center py-4 px-4 font-bold text-gray-700 text-sm uppercase tracking-wide">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaGastos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RESUMEN -->
+            <div id="seccionResumen" class="hidden">
+                <div class="card-professional p-6 mb-8">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <h2 class="text-2xl font-bold text-gray-900">📊 Resumen Mensual</h2>
+                        <div class="flex items-center gap-4">
+                            <button onclick="cambiarMes(-1)" class="bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl px-5 py-2.5 font-bold transition-all">
+                                ← Anterior
+                            </button>
+                            <span id="mesActual" class="text-xl font-bold text-emerald-700 px-4"></span>
+                            <button onclick="cambiarMes(1)" class="bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl px-5 py-2.5 font-bold transition-all">
+                                Siguiente →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="relative z-10">
+                            <h3 class="text-white/90 font-bold text-sm uppercase tracking-wide mb-3">Total en USD</h3>
+                            <p class="text-white text-5xl font-bold" id="resumenUSD">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="relative z-10">
+                            <h3 class="text-white/90 font-bold text-sm uppercase tracking-wide mb-3">Total en DOP</h3>
+                            <p class="text-white text-5xl font-bold" id="resumenDOP">RD$0.00</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-professional p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-6">📋 Desglose por Categoría</h3>
+                    <div id="resumenCategorias" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- GRÁFICAS -->
+            <div id="seccionGraficas" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="card-professional p-6">
+                        <h3 class="text-gray-900 font-bold mb-6 text-lg flex items-center gap-2">
+                            <span>📊</span> Distribución por Categoría
+                        </h3>
+                        <canvas id="graficoCategorias"></canvas>
+                    </div>
+                    <div class="card-professional p-6">
+                        <h3 class="text-gray-900 font-bold mb-6 text-lg flex items-center gap-2">
+                            <span>💰</span> Comparación USD vs DOP
+                        </h3>
+                        <canvas id="graficoMonedas"></canvas>
+                    </div>
+                </div>
+                <div class="card-professional p-6">
+                    <h3 class="text-gray-900 font-bold mb-6 text-lg flex items-center gap-2">
+                        <span>📈</span> Evolución Mensual de Gastos
+                    </h3>
+                    <canvas id="graficoEvolucion"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
