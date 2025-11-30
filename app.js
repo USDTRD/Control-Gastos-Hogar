@@ -5,22 +5,23 @@ let categoriaSeleccionada = '';
 let monedaSeleccionada = 'USD';
 let unsubscribe = null;
 
-// Categorías con iconos y colores
+// Categorías con iconos y colores profesionales
 const categorias = {
-    'PEDRITO': { icon: '👶', color: '#FF6B9D' },
-    'Alquiler': { icon: '🏠', color: '#FF6B6B' },
-    'Servicios': { icon: '⚡', color: '#4ECDC4' },
-    'Préstamos': { icon: '💳', color: '#F39C12' },
-    'Restaurantes': { icon: '🍽️', color: '#FF8B94' },
-    'Viajes': { icon: '✈️', color: '#9B59B6' },
-    'Gasolina': { icon: '⛽', color: '#3498DB' },
-    'Personal': { icon: '👔', color: '#1CC29F' },
-    'Internet': { icon: '🛒', color: '#E74C3C' },
-    'Supermercado': { icon: '🛍️', color: '#27AE60' },
-    'Farmacia': { icon: '💊', color: '#E91E63' },
-    'Ropa': { icon: '👕', color: '#9C27B0' },
-    'Adicionales': { icon: '➕', color: '#FF9800' },
-    'Otros': { icon: '📦', color: '#607D8B' }
+    'Pedrito': { icon: '👶', color: '#FFB4D6' },
+    'Casa': { icon: '🏠', color: '#A7C7E7' },
+    'Alquiler': { icon: '🏢', color: '#B4A7D6' },
+    'Servicios': { icon: '⚡', color: '#FFD700' },
+    'Préstamos': { icon: '💳', color: '#FF6B6B' },
+    'Restaurantes': { icon: '🍽️', color: '#FF9F43' },
+    'Viajes': { icon: '✈️', color: '#48C9B0' },
+    'Gasolina': { icon: '⛽', color: '#95A5A6' },
+    'Personal': { icon: '👥', color: '#9B59B6' },
+    'Internet': { icon: '🛒', color: '#3498DB' },
+    'Supermercado': { icon: '🛍️', color: '#2ECC71' },
+    'Farmacia': { icon: '💊', color: '#E74C3C' },
+    'Ropa': { icon: '👕', color: '#E67E22' },
+    'Adicionales': { icon: '➕', color: '#34495E' },
+    'Otros': { icon: '📋', color: '#7F8C8D' }
 };
 
 // Esperar a que Firebase esté listo
@@ -210,9 +211,9 @@ function actualizar() {
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
     const totalMes = totalUSD + (totalDOP / 60);
 
-    document.getElementById('totalMesDisplay').textContent = '$' + totalMes.toFixed(2);
-    document.getElementById('totalUSDDisplay').textContent = '$' + totalUSD.toFixed(2);
-    document.getElementById('totalDOPDisplay').textContent = 'RD$' + totalDOP.toFixed(2);
+    document.getElementById('totalMesDisplay').textContent = '$' + totalMes.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('totalUSDDisplay').textContent = '$' + totalUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('totalDOPDisplay').textContent = 'RD$' + totalDOP.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     document.getElementById('totalGastosDisplay').textContent = gastosDelMes.length;
 
     const listaDiv = document.getElementById('listaGastosRecientes');
@@ -222,10 +223,12 @@ function actualizar() {
         return;
     }
 
+    // MOSTRAR TODOS LOS GASTOS (no solo 10)
     listaDiv.innerHTML = gastosDelMes
-        .slice(0, 10)
         .map(g => {
             const cat = categorias[g.categoria];
+            if (!cat) return ''; // Si no existe la categoría, saltar
+            
             return `
                 <div class="category-item" onclick="eliminarGasto('${g.firestoreId}')">
                     <div class="category-icon" style="background: ${cat.color}20; color: ${cat.color};">
@@ -241,12 +244,14 @@ function actualizar() {
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 700; color: #1A1A1A; font-size: 16px;">
-                            ${g.moneda === 'USD' ? '$' : 'RD$'}${g.monto.toFixed(2)}
+                            ${g.moneda === 'USD' ? '$' : 'RD$'}${g.monto.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+        })
+        .filter(html => html !== '')
+        .join('');
 }
 
 function formatearFecha(fecha) {
@@ -270,8 +275,8 @@ function actualizarResumen() {
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
 
-    document.getElementById('resumenUSD').textContent = '$' + totalUSD.toFixed(2);
-    document.getElementById('resumenDOP').textContent = 'RD$' + totalDOP.toFixed(2);
+    document.getElementById('resumenUSD').textContent = '$' + totalUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('resumenDOP').textContent = 'RD$' + totalDOP.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     const porCategoria = {};
     gastosDelMes.forEach(g => {
@@ -297,6 +302,8 @@ function actualizarResumen() {
         })
         .map(([cat, datos]) => {
             const catInfo = categorias[cat];
+            if (!catInfo) return ''; // Si no existe la categoría, saltar
+            
             return `
                 <div class="category-item">
                     <div class="category-icon" style="background: ${catInfo.color}20; color: ${catInfo.color};">
@@ -311,67 +318,123 @@ function actualizarResumen() {
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        ${datos.USD > 0 ? `<div style="font-weight: 700; font-size: 16px;">$${datos.USD.toFixed(2)}</div>` : ''}
-                        ${datos.DOP > 0 ? `<div style="font-weight: 700; font-size: 16px;">RD$${datos.DOP.toFixed(2)}</div>` : ''}
+                        ${datos.USD > 0 ? `<div style="font-weight: 700; font-size: 16px;">$${datos.USD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
+                        ${datos.DOP > 0 ? `<div style="font-weight: 700; font-size: 16px;">RD$${datos.DOP.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
                     </div>
                 </div>
             `;
-        }).join('');
+        })
+        .filter(html => html !== '')
+        .join('');
 }
 
-// GRÁFICAS
+// GRÁFICAS - ARREGLADAS Y MEJORADAS
 function actualizarGraficas() {
     const mesActual = new Date().toISOString().substring(0, 7);
     const gastosDelMes = gastos.filter(g => g.fecha.startsWith(mesActual));
 
+    // Gráfico por categoría
     const porCategoria = {};
     gastosDelMes.forEach(g => {
         if (!porCategoria[g.categoria]) porCategoria[g.categoria] = 0;
         porCategoria[g.categoria] += g.moneda === 'USD' ? g.monto : g.monto / 60;
     });
 
+    const categoriasConDatos = Object.keys(porCategoria).filter(cat => categorias[cat]);
+    
     const ctxCat = document.getElementById('graficoCategorias');
     if (window.chartCat) window.chartCat.destroy();
-    window.chartCat = new Chart(ctxCat, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(porCategoria),
-            datasets: [{
-                data: Object.values(porCategoria),
-                backgroundColor: Object.keys(porCategoria).map(cat => categorias[cat].color),
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 11 } } }
+    
+    if (categoriasConDatos.length === 0) {
+        ctxCat.parentElement.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #8F9BB3;">No hay datos para este mes</div><canvas id="graficoCategorias"></canvas>';
+    } else {
+        window.chartCat = new Chart(ctxCat, {
+            type: 'doughnut',
+            data: {
+                labels: categoriasConDatos,
+                datasets: [{
+                    data: categoriasConDatos.map(cat => porCategoria[cat]),
+                    backgroundColor: categoriasConDatos.map(cat => categorias[cat].color),
+                    borderWidth: 3,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { 
+                        position: 'bottom',
+                        labels: { 
+                            font: { size: 12, weight: '600' },
+                            padding: 12,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: $${value.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
             }
-        }
-    });
+        });
+    }
 
+    // Gráfico USD vs DOP
     const totalUSD = gastosDelMes.filter(g => g.moneda === 'USD').reduce((sum, g) => sum + g.monto, 0);
     const totalDOP = gastosDelMes.filter(g => g.moneda === 'DOP').reduce((sum, g) => sum + g.monto, 0);
 
     const ctxMon = document.getElementById('graficoMonedas');
     if (window.chartMon) window.chartMon.destroy();
+    
     window.chartMon = new Chart(ctxMon, {
         type: 'bar',
         data: {
             labels: ['USD', 'DOP'],
             datasets: [{
+                label: 'Monto',
                 data: [totalUSD, totalDOP],
                 backgroundColor: ['#1CC29F', '#05BE9E'],
-                borderRadius: 8
+                borderRadius: 10,
+                barThickness: 60
             }]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            maintainAspectRatio: true,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed.y || 0;
+                            return `${label}: ${label === 'USD' ? '$' : 'RD$'}${value.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            },
+            scales: { 
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('en-US');
+                        }
+                    }
+                }
+            }
         }
     });
 
+    // Gráfico evolución mensual - últimos 6 meses
     const meses = {};
     gastos.forEach(g => {
         const mes = g.fecha.substring(0, 7);
@@ -380,26 +443,57 @@ function actualizarGraficas() {
     });
 
     const mesesOrdenados = Object.keys(meses).sort().slice(-6);
+    const nombresMeses = mesesOrdenados.map(m => {
+        const [year, month] = m.split('-');
+        const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        return mesesNombres[parseInt(month) - 1];
+    });
 
     const ctxEvol = document.getElementById('graficoEvolucion');
     if (window.chartEvol) window.chartEvol.destroy();
+    
     window.chartEvol = new Chart(ctxEvol, {
         type: 'line',
         data: {
-            labels: mesesOrdenados,
+            labels: nombresMeses,
             datasets: [{
                 label: 'Total (USD)',
                 data: mesesOrdenados.map(m => meses[m]),
                 borderColor: '#1CC29F',
                 backgroundColor: 'rgba(28, 194, 159, 0.1)',
                 tension: 0.4,
-                fill: true
+                fill: true,
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: '#1CC29F',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
             }]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            maintainAspectRatio: true,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed.y || 0;
+                            return `Total: $${value.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            },
+            scales: { 
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('en-US');
+                        }
+                    }
+                }
+            }
         }
     });
 }
