@@ -239,7 +239,7 @@ function actualizar() {
                             ${g.categoria}
                         </div>
                         <div style="color: #8F9BB3; font-size: 13px;">
-                            ${g.descripcion || formatearFecha(g.fecha)}
+                            ${g.descripcion ? g.descripcion + ' • ' + formatearFecha(g.fecha) : formatearFecha(g.fecha)}
                         </div>
                     </div>
                     <div style="text-align: right;">
